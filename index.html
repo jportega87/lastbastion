@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+
+<!-- Changes On: 38,39,61,155-170,204-209,234:    weaponType.text = 'MACHINE GUN ACQUIRED!'; 325-360,433: weaponType.text = 'MACHINE GUN ACQUIRED!' -->
+
+<head>
+	<meta charset="UTF-8" />
+	<title>Last Bastion</title>
+	<script type="text/javascript" src="node_modules/phaser/build/phaser.js"></script>
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<script type="text/javascript">
+		var game = new Phaser.Game(1800, 900, Phaser.AUTO, '', {
+			preload: preload,
+			create: create,
+			update: update,
+			render: render
+		});
+
+		function preload() {
+			game.load.spritesheet('explosion', 'assets/sprites/explosion.png', 64, 64);
+			game.load.spritesheet('shipexplosion', 'assets/sprites/playerdeath.png', 256, 256);
+			game.load.image('floor', 'assets/spacebg.jpg');
+			game.load.image('player', 'assets/enemyBlack3.png');
+			game.load.image('enemy', 'assets/enemyRed4.png');
+			game.load.image('bullet', 'assets/laserRed16.png');
+			game.load.image('enemyBullet', 'assets/enemybullet.png');
+			game.load.image('wall', 'assets/wall.jpg');
+			game.load.image('enemyShooter', 'assets/enemyRed5.png');
+			game.load.image('healthPack', 'assets/healthPack.png');
+			game.load.image('healthPack2' , 'assets/healthPack.png');
+			game.load.image('machineGun', 'assets/gatgun.png');
+			game.load.image('shield', 'assets/shield.png');
+			game.load.image('gatBullet', 'assets/gatbullet.png');
+			game.load.audio('enemyDeath', 'assets/audio/enemyexp3.wav');
+			game.load.audio('gatGunShoot', 'assets/audio/gatbullet.wav');
+			game.load.audio('playerDeath', 'assets/audio/playerdeath.ogg');
+			game.load.audio('enemyShoot', 'assets/audio/playerbullet.ogg');
+			game.load.audio('playerShoot', 'assets/audio/enemybullet.wav');
+			game.load.audio('invincibleMusic', 'assets/audio/dubstep.wav');
+			game.load.audio('pickGat', 'assets/audio/gunPickUp.ogg');
+			game.load.audio('shieldGet', 'assets/audio/shieldup.wav');
+			game.load.audio('healthGet', 'assets/audio/healthpickup.wav');
+			game.load.audio('mainTheme', 'assets/audio/maintheme2.wav');
+			game.load.image('shotGunPickup', 'assets/shotgun.png');
+			game.load.audio('shotGunNoise', 'assets/audio/shogunsound.wav');
+			game.load.audio('playerHit', 'assets/audio/playerhit.wav');
+			game.load.audio('deflect', 'assets/audio/deflect.wav');
+
+		}
+
+		var gatGet;
+		var invincibleText;
+		var score;
+		var player;
+		var enemies;
+		var enemy;
+		var weapon;
+		var walls;
+		var enemyWeapon;
+		var count = 0;
+		var healthPack;
+		var healthPack2;
+		var shootCount = 0;
+		var machineGun;
+		var gatGun;
+		var gatGunAmmo;
+		var weaponType;
+		var weaponText;
+		var invincible;
+		var shield;
+		var gatGunActive;
+		var explosions;
+		var playerExplosions;
+		var wince;
+		var ouch;
+		var sparkle;
+		var invince;
+		var shieldSparkle;
+		var enemyDeath;
+		var playerShoot;
+		var enemyShoot;
+		var playerDeath;
+		var gatGunShoot;
+		var invincibleMusic;
+		var pickGat;
+		var shieldGet;
+		var healthGet;
+		var mainTheme;
+		var shieldInterval;
+		var healthPackInterval;
+		var machineGunInterval;
+		var shotGet;
+		var shotGun;
+		var shotGun2;
+		var shotGun3;
+		var shotGun4;
+		var shotGun5;
+		var shotGunInterval;
+		var shotGunPickup;
+		var shotGunNoise;
+		var playerHit;
+		var deflect;
+
+
+		function create() {
+			//Start the Arcade Physics Engine
+			game.physics.startSystem(Phaser.Physics.ARCADE);
+
+			game.add.sprite(0,0, 'floor');
+
+			//Declare Sound Effects
+			enemyDeath = game.add.audio('enemyDeath');
+			playerShoot = game.add.audio('playerShoot');
+			enemyShoot = game.add.audio('enemyShoot');
+			playerDeath = game.add.audio('playerDeath');
+			gatGunShoot = game.add.audio('gatGunShoot');
+			invincibleMusic = game.add.audio('invincibleMusic');
+			pickGat = game.add.audio('pickGat');
+			shieldGet = game.add.audio('shieldGet');
+			healthGet = game.add.audio('healthGet');
+			mainTheme = game.add.audio('mainTheme');
+			shotGunNoise = game.add.audio('shotGunNoise');
+			playerHit = game.add.audio('playerHit');
+			deflect = game.add.audio('deflect');
+
+			mainTheme.loop = true;
+			mainTheme.play();
+			//Walls
+			walls = game.add.group();
+			walls.enableBody = true;
+			var wall1 = walls.create(game.world.width / 2, game.world.height / 2, 'wall');
+			var wall2 = walls.create(game.world.width / 4, game.world.height / 2, 'wall');
+			var wall3 = walls.create(game.world.width * .75, game.world.height / 2, 'wall');
+			walls.forEach(function(wall) {
+				wall.anchor.set(0.5);
+				wall.body.immovable = true;
+				wall.scale.setTo(.5, .5);
+				game.physics.arcade.enable(wall);
+			});
+			wall2.scale.setTo(.125, 4);
+			wall3.scale.setTo(.125, 4);
+
+			//Player Declaration and Information
+			player = this.add.sprite(game.world.width/2, game.world.height-200, 'player');
+			game.physics.arcade.enable(player);
+			player.enableBody = true;
+			player.body.collideWorldBounds = true;
+			player.body.allowRotation = false;
+			player.anchor.set(0.5);
+			player.scale.setTo(.75, .75);
+			player.health = 30;
+			invincible = false;
+
+			//Enemy Group Declaration
+			enemies = game.add.group();
+			enemies.enableBody = true;
+			game.physics.arcade.enable(enemies);
+
+			//Generate initial enemies
+			for (var i = 0; i < 2; i++) {
+				enemy = enemies.create(game.world.randomX, 0, 'enemy');
+				physicsSet(enemy);
+				enemy = enemies.create(game.world.randomX, game.world.height, 'enemy');
+				physicsSet(enemy);
+				enemy = enemies.create(0, game.world.randomY, 'enemy');
+				physicsSet(enemy);
+				enemy = enemies.create(game.world.width, game.world.randomY, 'enemy');
+				physicsSet(enemy);
+			}
+
+			//Shooter Enemy Group Creation
+			enemyShooters = game.add.group();
+			var numba = 2;
+
+			// Create All Enemy Shooters
+			for (var x = 0; x < numba; x++) {
+				enemyShooter = enemyShooters.create(game.world.randomX, 200, 'enemyShooter');
+				game.physics.arcade.enable(enemyShooter);
+				enemyShooter.enableBody = true;
+				enemyShooter.body.collideWorldBounds = true;
+				enemyShooter.body.allowRotation = false;
+				enemyShooter.anchor.set(0.5);
+				enemyShooter.weapon = this.add.weapon(3, 'enemyBullet');
+				enemyShooter.weapon.onFire.add(function() {enemyShoot.play()},this);
+				enemyShooter.weapon.trackSprite(enemyShooter, 50, 0, true);
+				enemyWeapon = game.add.weapon(3, 'enemyBullet');
+				game.physics.arcade.enable(enemyWeapon);
+				enemyShooter.weapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				enemyShooter.weapon.bulletSpeed = 800;
+				enemyShooter.weapon.trackSprite(enemyShooter, 50, 0, true);
+				enemyShooter.scale.setTo(.75, .75);
+			};
+
+			//Player Weapon and Bullet Declaration
+			weapon = game.add.weapon(3, 'bullet');
+			game.physics.arcade.enable(weapon);
+			weapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+			weapon.bulletSpeed = 900;
+			weapon.trackSprite(player, 50, 0, true);
+			weapon.onFire.add(function() {playerShoot.play()},this);
+
+			//All input assignments
+			cursors = this.input.keyboard.createCursorKeys();
+			leftButton = this.input.keyboard.addKey(Phaser.KeyCode.A);
+			rightButton = this.input.keyboard.addKey(Phaser.KeyCode.D);
+			upButton = this.input.keyboard.addKey(Phaser.KeyCode.W);
+			downButton = this.input.keyboard.addKey(Phaser.KeyCode.S);
+			this.physics.arcade.collide(weapon, enemy);
+
+			// Player Health Display
+			playerText = game.add.text(500, 0, `Player Health: ${ player.health }`, {
+				fontSize: '32px',
+				fill: '#FFF'
+			});
+			// Player Score Text
+			score=0;
+			playerScoreText = game.add.text(1000, 0, 'Player Score: '+score, {
+				fontSize: '32px',
+				fill: '#FFF'
+			});
+			//Invincibility Text
+			invincibleText = game.add.text( 1000 , game.world.height - 50 , `` , {
+				fontSize: '32px',
+				fill: '#FFF'
+			});
+			//Reset Text
+			stateText = game.add.text(game.world.centerX,game.world.centerY,' ', { 	font: '84px Arial', fill: '#fff' });
+			stateText.anchor.setTo(0.5, 0.5);
+			stateText.visible = false;
+
+			weaponType = game.add.text( 400 , game.world.height-50, `` , {
+				fontSize: '32px',
+				fill: '#FFF'
+			});
+
+
+		//Weapon Drops
+		healthPackInterval = setInterval( function(){
+			if (healthPack2) healthPack2.kill();
+			healthPack2 = game.add.sprite( game.world.randomX , game.world.randomY , 'healthPack2' )
+			healthPack2.scale.setTo(.65);
+			game.physics.arcade.enable(healthPack2);
+			healthPack2.enableBody = true;
+			healthPack2.body.collideWorldBounds = true;
+			healthPack2.anchor.set(0.5);
+
+		} , 9000 );
+
+		machineGunInterval = setInterval( function(){
+			if (machineGun) machineGun.kill();
+			machineGun = game.add.sprite( game.world.randomX , game.world.randomY , 'machineGun' );
+			machineGun.scale.setTo(.65);
+			game.physics.arcade.enable(machineGun);
+			machineGun.enableBody = true;
+			machineGun.body.collideWorldBounds = true;
+			machineGun.anchor.set(0.5);
+		}, 9000);
+
+		shotGunInterval = setInterval( function(){
+			if (shotGunPickup) shotGunPickup.kill();
+			shotGunPickup = game.add.sprite( game.world.randomX , game.world.randomY , 'shotGunPickup' );
+			shotGunPickup.scale.setTo(.65);
+			game.physics.arcade.enable(shotGunPickup);
+			shotGunPickup.enableBody = true;
+			shotGunPickup.body.collideWorldBounds = true;
+			shotGunPickup.anchor.set(0.5);
+		}, 9000);
+
+		shieldInterval = setInterval( function(){
+			if (shield) shield.kill();
+			shield = game.add.sprite( game.world.randomX , game.world.randomY , 'shield' );
+			game.physics.arcade.enable(shield);
+			shield.enableBody = true;
+			shield.body.collideWorldBounds = true;
+			shield.anchor.set(0.5);
+			shield.scale.setTo(.5);
+		} , 9000 );
+
+		explosions = game.add.group();
+		explosions.enableBody = true;
+		explosions.physicsBodyType = Phaser.Physics.ARCADE;
+		explosions.createMultiple(30, 'explosion');
+		explosions.setAll('anchor.x', 0.5);
+		explosions.setAll('anchor.y', 0.5);
+		explosions.forEach( function(explosion) {
+			explosion.animations.add('explosion');
+		});
+		playerExplosions = game.add.group();
+		playerExplosions.enableBody = true;
+		playerExplosions.physicsBodyType = Phaser.Physics.ARCADE;
+		playerExplosions.createMultiple(1, 'shipexplosion');
+		playerExplosions.setAll('anchor.x', 0.5);
+		playerExplosions.setAll('anchor.y', 0.5);
+		playerExplosions.forEach( function(playerExplosion) {
+			playerExplosion.animations.add('shipexplosion');
+		});
+	}
+
+		function update() {
+
+
+			//Invincibility Text
+			if(invincible==true){
+				invincibleText.text='INVINCIBILITY ACTIVE!';
+			}else{
+				invincibleMusic.stop();
+				invincibleText.text='';
+			}
+
+			var player_x = player.world.x;
+			var player_y = player.world.y;
+			player.rotation = game.physics.arcade.angleToPointer(player);
+			enemies.forEachAlive(function(enemy) {
+				enemy.rotation = game.physics.arcade.angleBetween(enemy, player);
+			});
+			//  EnemyShooter Behavior
+			enemyShooters.forEachAlive(function(enemyShooter) {
+				enemyShooter.rotation = game.physics.arcade.angleBetween(enemyShooter, player);
+				if (player.alive == true) {
+					enemyShooter.weapon.fire();
+				};
+				if (player.alive == true) {
+					enemyShooter.body.velocity.x += Math.atan((enemyShooter.rotation) * 60);
+					enemyShooter.body.velocity.y += Math.atan((enemyShooter.rotation) * 60);
+				} else {
+					enemy.body.velocity.x = 0;
+					enemy.body.velocity.y = 0;
+					enemyShooter.body.velocity.x = 0;
+					enemyShooter.body.velocity.y = 0;
+				}
+			});
+			// Player Fire
+			if (game.input.mousePointer.isDown && player.alive == true){
+        		if(gatGun) {
+					weaponType.text = 'MACHINE GUN ACQUIRED!';
+            		gatGun.fire();
+					if (gatGunShoot.isPlaying == false) gatGunShoot.play();
+        		}else if(shotGun){
+					shotGun.fire();
+					shotGun2.fire();
+					shotGun3.fire();
+					shotGun4.fire();
+					shotGun5.fire();
+				} else {
+					//if (playerShoot.isPlaying == false) playerShoot.play();
+               		weapon.fire();
+        		}
+   			}
+			// Enemy Tracking
+			if (player.alive == true) {
+				enemies.forEachAlive(function(enemy) {
+					game.physics.arcade.moveToObject(enemy, player, 200)
+				});
+			} else {
+				enemies.forEachAlive(function(enemy) {
+					enemy.body.velocity.x = 0;
+					enemy.body.velocity.y = 0;
+				}, this);
+			}
+			//Player Movement/ Controls
+			player.body.velocity.x = 0;
+			player.body.velocity.y = 0;
+			if (leftButton.isDown) {
+				player.body.velocity.x = -350;
+			}
+			if (rightButton.isDown) {
+				player.body.velocity.x = 350;
+			}
+			if (downButton.isDown) {
+				player.body.velocity.y = 350;
+			}
+			if (upButton.isDown) {
+				player.body.velocity.y = -350;
+			}
+
+			//All Game Collision and Overlaps
+			game.physics.arcade.overlap(weapon.bullets, walls, bulletWall);
+			// game.physics.arcade.overlap(enemyShooter.weapon.bullets, walls, bulletWall);
+			enemyShooters.forEachAlive(function(enemyShooter) {
+				game.physics.arcade.overlap(enemyShooter.weapon.bullets, walls, bulletWall);
+				game.physics.arcade.collide(enemyShooter.weapon.bullets, player, attack, null, this);
+			});
+			game.physics.arcade.overlap(weapon.bullets, enemies, smash, null, this);
+			game.physics.arcade.collide(weapon.bullets, enemyShooters, smash, null, this);
+			game.physics.arcade.collide(enemies, walls);
+			game.physics.arcade.collide(enemies, enemies);
+			game.physics.arcade.collide(enemies, enemyShooters);
+			game.physics.arcade.collide(enemyShooters, enemyShooters);
+			game.physics.arcade.collide(enemyShooters, walls);
+			game.physics.arcade.collide(player, enemies, enemyAndPlayerCollide, null, this);
+			game.physics.arcade.collide(player, enemyShooters, enemyAndPlayerCollide, null, this);
+			game.physics.arcade.collide(player, walls);
+			game.physics.arcade.collide(healthPack2, player , pickUp );
+			game.physics.arcade.collide(machineGun, player , pickUp );
+			game.physics.arcade.collide(shield, player , pickUp );
+			game.physics.arcade.overlap(healthPack2, player, wallSpawn);
+			game.physics.arcade.overlap(shield, player, wallSpawn);
+			game.physics.arcade.overlap(machineGun, player, wallSpawn);
+			game.physics.arcade.overlap(shotGunPickup, player, pickUp);
+
+			if(gatGun){
+				game.physics.arcade.collide(gatGun.bullets, enemies, smash, null, this);
+	    		game.physics.arcade.collide(gatGun.bullets, enemyShooters, smash, null, this);
+				game.physics.arcade.overlap(gatGun.bullets, walls, bulletWall, null, this);
+			};
+			if(shotGun){
+				game.physics.arcade.overlap(shotGun.bullets, enemies, pierce, null, this);
+				game.physics.arcade.overlap(shotGun.bullets, enemyShooters, pierce, null, this);
+				game.physics.arcade.overlap(shotGun.bullets, walls, bulletWall, null, this);
+
+				game.physics.arcade.overlap(shotGun2.bullets, enemies, pierce, null, this);
+				game.physics.arcade.overlap(shotGun2.bullets, enemyShooters, pierce, null, this);
+				game.physics.arcade.overlap(shotGun2.bullets, walls, bulletWall, null, this);
+
+				game.physics.arcade.overlap(shotGun3.bullets, enemies, pierce, null, this);
+				game.physics.arcade.overlap(shotGun3.bullets, enemyShooters, pierce, null, this);
+				game.physics.arcade.overlap(shotGun3.bullets, walls, bulletWall, null, this);
+
+				game.physics.arcade.overlap(shotGun4.bullets, enemies, pierce, null, this);
+				game.physics.arcade.overlap(shotGun4.bullets, enemyShooters, pierce, null, this);
+				game.physics.arcade.overlap(shotGun4.bullets, walls, bulletWall, null, this);
+
+				game.physics.arcade.overlap(shotGun5.bullets, enemies, pierce, null, this);
+				game.physics.arcade.overlap(shotGun5.bullets, enemyShooters, pierce, null, this);
+				game.physics.arcade.overlap(shotGun5.bullets, walls, bulletWall, null, this);
+			};
+
+	}
+
+
+		function render() {
+			// weapon.debug();
+		}
+
+		function pierce(bullet, enemy) {
+			console.log(bullet);
+			playExplosion(enemy);
+			enemy.kill();
+			score++;
+			playerScoreText.text = 'Player Score: '+ score;
+			enemyRespawn();
+		}
+
+		function damageTaken(player){
+			if( !invincible ){
+				playerHit.play();
+                if( ouch ){ clearTimeout( ouch ); clearInterval( wince ) };
+                    wince = setInterval(function(){
+                    	if( player.tint == 0xff0000 ){
+                            player.tint = 0xffffff;
+                        }else{
+                            player.tint = 0xff0000;
+                        };
+                    } , 50);
+                    ouch = setTimeout(function(){
+                        clearInterval( wince );
+                        player.tint = 0xffffff;
+                    },250);
+            };
+		}
+
+		//Bullet and Wall Collision
+		function bulletWall(bullet) {
+			bullet.kill();
+		}
+		//Player and Enemy Bullet Collision
+		function attack (player , bullet) {
+    		if(invincible==false){
+				playerHit.play();
+    			console.log(player.health);
+    			player.damage(1);
+    			bullet.kill();
+    			playerText.text ='Player Health: ' + player.health
+    		}else{
+				deflect.play();
+        		bullet.kill();
+    		}
+        	if(player.health==0){
+			playerDeathExplosion(player);
+			stateText.text=" GAME OVER \n Your Score: "+score+"\n Click to restart";
+        	stateText.visible = true;
+        	//the "click to restart" handler
+        	game.input.onTap.addOnce(restart);
+        	}
+			damageTaken(player);
+		}
+
+		//Player and Enemy Body Collision
+		function enemyAndPlayerCollide(player, enemy) {
+	    	if(invincible==true){
+				deflect.play();
+				playExplosion(enemy);
+	        	enemy.kill();
+				score++;
+				playerScoreText.text = 'Player Score: '+ score;
+				enemyRespawn();
+	    	}else{
+				playExplosion(enemy);
+				enemy.kill();
+				score++;
+				playerScoreText.text = 'Player Score: '+ score;
+				enemyRespawn();
+	    		player.damage(5);
+				playerText.text ='Player Health: ' + player.health;
+				if(player.health<=0){
+					playerDeathExplosion(player);
+					player.health=0;
+		    		playerText.text ='Player Health: ' + player.health
+		        	stateText.text=" GAME OVER \n Your Score: "+score+"\n Click to restart";
+		        	stateText.visible = true;
+		        	//the "click to restart" handler
+		        	game.input.onTap.addOnce(restart);
+				}
+			}
+			damageTaken(player);
+		}
+
+		function playerDeathExplosion(player){
+			var playerExplosion = playerExplosions.getFirstExists(false);
+			playerExplosion.scale.setTo(2, 2);
+			playerExplosion.reset(player.body.x + player.body.halfWidth, player.body.y + player.body.halfHeight);
+			playerExplosion.play('shipexplosion', 24, false, true);
+			playerDeath.play();
+		}
+
+		function playExplosion(enemy){
+			var explosion = explosions.getFirstExists(false);
+			explosion.reset(enemy.body.x + enemy.body.halfWidth, enemy.body.y + enemy.body.halfHeight);
+			explosion.body.velocity.y = enemy.body.velocity.y;
+			explosion.body.velocity.x = enemy.body.velocity.x;
+			explosion.play('explosion', 24, false, true);
+			enemyDeath.play();
+		}
+
+		//Weapon and Enemy Collision
+		function smash(bullet, enemy) {
+			console.log(bullet);
+			bullet.kill();
+			playExplosion(enemy);
+			enemy.kill();
+			score++;
+			playerScoreText.text = 'Player Score: '+ score;
+			enemyRespawn();
+		}
+
+		function physicsSet(enemy){
+			enemy.enableBody = true;
+			enemy.body.collideWorldBounds = true;
+			enemy.anchor.set(0.5);
+			enemy.body.allowRotation = false;
+			enemy.scale.setTo(.75, .75);
+			enemy.animations.add('boom');
+		}
+
+		function enemyRespawn(){
+			if (count == 0) {
+				enemy = enemies.create(game.world.randomX, 0, 'enemy');
+				physicsSet(enemy);
+				count++;
+			} else if (count == 1) {
+				enemy = enemies.create(game.world.randomX, game.world.height, 'enemy');
+				physicsSet(enemy);
+				count++;
+			} else if (count == 2) {
+				enemy = enemies.create(0, game.world.randomY, 'enemy');
+				physicsSet(enemy);
+				count++;
+			} else if (count == 3) {
+				enemy = enemies.create(game.world.width, game.world.randomY, 'enemy');
+				physicsSet(enemy);
+				count++;
+			} else if (count == 4) {
+				if(shootCount == 0){
+					enemyShooter = enemyShooters.create(game.world.randomX, 0, 'enemyShooter');
+					shootCount++;
+				}
+				else if(shootCount == 1){
+					enemyShooter = enemyShooters.create(game.world.randomX, game.world.height, 'enemyShooter');
+					shootCount++;
+				}
+				else if(shootCount == 2){
+					enemyShooter = enemyShooters.create(0, game.world.randomY, 'enemyShooter');
+					shootCount++;
+				}
+				else if(shootCount == 3){
+					enemyShooter = enemyShooters.create(game.world.width, game.world.randomY, 'enemyShooter');
+					shootCount = 0;
+				}
+				game.physics.arcade.enable(enemyShooter);
+				enemyShooter.enableBody = true;
+				enemyShooter.body.collideWorldBounds = true;
+				enemyShooter.body.allowRotation = false;
+				enemyShooter.anchor.set(0.5);
+				enemyShooter.weapon = game.add.weapon(3, 'enemyBullet');
+				enemyShooter.weapon.onFire.add(function() {enemyShoot.play()},this);
+				enemyShooter.weapon.trackSprite(enemyShooter, 50, 0, true);
+				enemyWeapon = game.add.weapon(3, 'enemyBullet');
+				game.physics.arcade.enable(enemyWeapon);
+				enemyShooter.weapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				enemyShooter.weapon.bulletSpeed = 800;
+				enemyShooter.weapon.trackSprite(enemyShooter, 50, 0, true);
+				enemyShooter.scale.setTo(.75, .75);
+				count = 0;
+			}
+		}
+
+		function pickUp( pickUp , player ){
+
+			if (pickUp.key == 'machineGun') {
+				if( shotGet ){ clearTimeout( shotGet ); shotGet = false };
+				if( gatGet ){ clearTimeout( gatGet );  };
+				pickGat.play();
+				gatGun = game.add.weapon(10, 'gatBullet');
+				game.physics.arcade.enable(gatGun);
+				gatGun.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				gatGun.bulletSpeed = 1200;
+				gatGunAmmo = 800;
+				weaponType.text = 'MACHINE GUN ACQUIRED!';
+				weaponType.alpha = 1;
+				console.log(weaponText);
+				gatGun.trackSprite(player, 50, 0, true);
+				pickUp.kill();
+				gatGet = setTimeout(function(){gatGun = false; weaponType.alpha = 0},10000);
+	 		}
+
+			if (pickUp.key == 'shotGunPickup') {
+				if( shotGet ){ clearTimeout( shotGet ) };
+				if( gatGet ){ clearTimeout( gatGet ); gatGun = false };
+				pickGat.play();
+
+				shotGun = game.add.weapon(1, 'gatBullet');
+				game.physics.arcade.enable(shotGun);
+				shotGun.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				shotGun.bulletSpeed = 1200;
+				shotGun.fireRate = 1000;
+				shotGun.bulletAngleVariance = 35;
+				shotGun.trackSprite(player, 40, 0, true);
+				shotGun.onFire.add(function() {shotGunNoise.play()},this);
+
+				shotGun2 = game.add.weapon(1, 'gatBullet');
+				game.physics.arcade.enable(shotGun2);
+				shotGun2.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				shotGun2.bulletSpeed = 1200;
+				shotGun2.fireRate = 1000;
+				shotGun2.bulletAngleVariance = 35;
+				shotGun2.trackSprite(player, 20, 0, true);
+
+				shotGun3 = game.add.weapon(1, 'gatBullet');
+				game.physics.arcade.enable(shotGun3);
+				shotGun3.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				shotGun3.bulletSpeed = 1200;
+				shotGun3.fireRate = 1000;
+				shotGun3.bulletAngleVariance = 35;
+				shotGun3.trackSprite(player, 40, 0, true);
+
+				shotGun4 = game.add.weapon(1, 'gatBullet');
+				game.physics.arcade.enable(shotGun4);
+				shotGun4.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				shotGun4.bulletSpeed = 1200;
+				shotGun4.fireRate = 1000;
+				shotGun4.bulletAngleVariance = 35;
+				shotGun4.trackSprite(player, 40, 0, true);
+
+				shotGun5 = game.add.weapon(1, 'gatBullet');
+				game.physics.arcade.enable(shotGun5);
+				shotGun5.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+				shotGun5.bulletSpeed = 1200;
+				shotGun5.fireRate = 1000;
+				shotGun5.bulletAngleVariance = 35;
+				shotGun5.trackSprite(player, 40, 0, true);
+
+				if(gatGet){
+					clearTimeout(gatGet);
+				}
+				weaponType.text = 'SHOT GUN ACQUIRED!';
+				weaponType.alpha = 1;
+				console.log(weaponText);
+				pickUp.kill();
+				shotGet = setTimeout(function(){shotGun = false; shotGun2 = false; weaponType.alpha = 0},10000);
+	 		}
+
+			if( pickUp.key === 'healthPack2' ){
+				pickUp.kill();
+				healthGet.play();
+				// console.log(player.health);
+				player.heal(5);
+				playerText.text = `Player Health: ${ player.health }`
+				// console.log(player.health);
+				if (player.health>30) {
+					player.health = 30
+					// console.log(`Player health adjusted ${player.health}`);
+				}
+			}
+
+			if( pickUp.key === 'shield' ){
+				if( invince ){ clearTimeout( invince ); clearInterval( sparkle ) };
+				console.log("invincibility function");
+				shieldGet.play();
+				pickUp.kill();
+				player.tint = '0xff0000';
+				invincible=true;
+				mainTheme.pause();
+				invincibleMusic.loop = true;
+				invincibleMusic.play();
+				player.tint =  0xff0000;
+				sparkle = setInterval(function(){
+                    if( player.tint == 0xffff00 ){
+                        player.tint = 0x00ff00;
+                    }else if( player.tint == 0x00ff00){
+                        player.tint = 0x00ffff;
+                    }else if( player.tint == 0x00ffff ){
+                        player.tint = 0x999900;
+                    }else{
+                        player.tint = 0xffff00;
+                    };
+            	} , 50);
+
+
+				invince = setTimeout(function(){
+					invincible=false;
+					mainTheme.resume();
+					clearInterval( sparkle );
+					player.tint = 0xffffff;
+				},	7000);
+			};
+		};
+
+	function wallSpawn(pickUp){
+		if(pickUp.key == 'healthPack2'){
+			pickUp.body.x += 60;
+			pickUp.body.y += 60;
+		}
+		if(pickUp.key == 'machineGun'){
+			pickUp.body.x += 60;
+			pickUp.body.y += 60;
+		}
+		if(pickUp.key == 'shield'){
+			pickUp.body.x += 60;
+			pickUp.body.y += 60;
+		}
+	}
+
+	//RESTART THE GAME
+	function restart(){
+			stateText.visible = false;
+			gatGun = false;
+			mainTheme.stop();
+			clearInterval( ouch );
+			clearInterval( sparkle );
+			clearInterval( machineGunInterval );
+			clearInterval( healthPackInterval );
+			clearInterval( shieldInterval );
+			clearInterval( shotGunInterval );
+			game.state.start(game.state.current);
+
+	}
+
+	</script>
+</body>
+
+</html>
